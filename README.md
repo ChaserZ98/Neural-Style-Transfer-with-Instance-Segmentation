@@ -81,7 +81,7 @@ This is a course project of Rutgers CS535 Machine Learning I - Pattern Recogniti
 
 ## Contact
 
-Akshay Patil - []()
+Akshay Patil - [avp119@scarletmail.rutgers.edu](mailto:avp119@scarletmail.rutgers.edu)
 
 Animesh Sharma - [animesharma08+github@gmail.com](mailto:animesharma08+github@gmail.com)
 
