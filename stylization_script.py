@@ -1,15 +1,11 @@
-import os
 import argparse
-
+import os
 
 import torch
 from torch.utils.data import DataLoader
 
-
 import utils.utils as utils
 from models.definitions.transformer_net import TransformerNet
-import numpy as np
-import cv2
 
 
 def stylize_static_image(inference_config):
@@ -80,7 +76,7 @@ if __name__ == "__main__":
     parser.add_argument("--content_input", type=str, help="Content image(s) to stylize", default='000072.jpg')
     parser.add_argument("--batch_size", type=int, help="Batch size used only if you set content_input to a directory", default=5)
     parser.add_argument("--img_width", type=int, help="Resize content image to this width", default=600)
-    parser.add_argument("--model_name", type=str, help="Model binary to use for stylization", default='och_edtaonisl_200.pth')
+    parser.add_argument("--model_name", type=str, help="Model binary to use for stylization", default='style_beihong_xu_horse_datapoints_508100_cw_1.0_sw_400000.0_tw_0.pth')
 
     # Less frequently used arguments
     parser.add_argument("--should_not_display", action='store_false', help="Should display the stylized result")

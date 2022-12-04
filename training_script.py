@@ -1,22 +1,21 @@
-import os
 import argparse
+import os
+import pickle
 import time
 
+import numpy as np
 import torch
 from torch.optim import Adam
-##from torch.utils.tensorboard import SummaryWriter
-import numpy as np
+from torch.utils.tensorboard import SummaryWriter
 
+import utils.utils as utils
 from models.definitions.perceptual_loss_net import PerceptualLossNet
 from models.definitions.transformer_net import TransformerNet
-import utils.utils as utils
-import pickle
 
 
 def train(training_config):
-    ##writer = SummaryWriter()  # (tensorboard) writer will output to ./runs/ directory by default
+    writer = SummaryWriter()  # (tensorboard) writer will output to ./runs/ directory by default
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-    print(device)
 
     # prepare data loader
     train_loader = utils.get_training_data_loader(training_config)
@@ -93,12 +92,12 @@ def train(training_config):
 
 
             # Save total loss
-            total_losses_dict[epoch] = total_loss
-            path_total = os.path.join('losses', training_config['style_img_name'])
-            if not os.path.exists(path_total):
-                os.makedirs(path_total)
-            with open(os.path.join(path_total, 'total_losses_dict.pickle'), 'wb') as handle:
-                pickle.dump(total_losses_dict, handle, protocol = pickle.HIGHEST_PROTOCOL)
+            # total_losses_dict[epoch] = total_loss
+            # path_total = os.path.join('losses', training_config['style_img_name'])
+            # if not os.path.exists(path_total):
+            #     os.makedirs(path_total)
+            # with open(os.path.join(path_total, 'total_losses_dict.pickle'), 'wb') as handle:
+            #     pickle.dump(total_losses_dict, handle, protocol = pickle.HIGHEST_PROTOCOL)
 
             total_loss.backward()
             optimizer.step()
@@ -112,17 +111,17 @@ def train(training_config):
             acc_style_loss += style_loss.item()
             acc_tv_loss += tv_loss.item()
 
-            # if training_config['enable_tensorboard']:
-            #     # log scalars
-            #     writer.add_scalar('Loss/content-loss', content_loss.item(), len(train_loader) * epoch + batch_id + 1)
-            #     writer.add_scalar('Loss/style-loss', style_loss.item(), len(train_loader) * epoch + batch_id + 1)
-            #     writer.add_scalar('Loss/tv-loss', tv_loss.item(), len(train_loader) * epoch + batch_id + 1)
-            #     writer.add_scalars('Statistics/min-max-mean-median', {'min': torch.min(stylized_batch), 'max': torch.max(stylized_batch), 'mean': torch.mean(stylized_batch), 'median': torch.median(stylized_batch)}, len(train_loader) * epoch + batch_id + 1)
-            #     # log stylized image
-            #     if batch_id % training_config['image_log_freq'] == 0:
-            #         stylized = utils.post_process_image(stylized_batch[0].detach().to('cpu').numpy())
-            #         stylized = np.moveaxis(stylized, 2, 0)  # writer expects channel first image
-            #         writer.add_image('stylized_img', stylized, len(train_loader) * epoch + batch_id + 1)
+            if training_config['enable_tensorboard']:
+                # log scalars
+                writer.add_scalar('Loss/content-loss', content_loss.item(), len(train_loader) * epoch + batch_id + 1)
+                writer.add_scalar('Loss/style-loss', style_loss.item(), len(train_loader) * epoch + batch_id + 1)
+                writer.add_scalar('Loss/tv-loss', tv_loss.item(), len(train_loader) * epoch + batch_id + 1)
+                writer.add_scalars('Statistics/min-max-mean-median', {'min': torch.min(stylized_batch), 'max': torch.max(stylized_batch), 'mean': torch.mean(stylized_batch), 'median': torch.median(stylized_batch)}, len(train_loader) * epoch + batch_id + 1)
+                # log stylized image
+                if batch_id % training_config['image_log_freq'] == 0:
+                    stylized = utils.post_process_image(stylized_batch[0].detach().to('cpu').numpy())
+                    stylized = np.moveaxis(stylized, 2, 0)  # writer expects channel first image
+                    writer.add_image('stylized_img', stylized, len(train_loader) * epoch + batch_id + 1)
 
             if training_config['console_log_freq'] is not None and batch_id % training_config['console_log_freq'] == 0:
                 print(f'time elapsed={(time.time()-ts)/60:.2f}[min]|epoch={epoch + 1}|batch=[{batch_id + 1}/{len(train_loader)}]|c-loss={acc_content_loss / training_config["console_log_freq"]}|s-loss={acc_style_loss / training_config["console_log_freq"]}|tv-loss={acc_tv_loss / training_config["console_log_freq"]}|total loss={(acc_content_loss + acc_style_loss + acc_tv_loss) / training_config["console_log_freq"]}')
@@ -149,18 +148,15 @@ if __name__ == "__main__":
     #
     # Fixed args - don't change these unless you have a good reason
     #
-    #print(f"lolol {os.getcwd()}")
-    dataset_path = os.path.join(os.path.dirname(__file__), 'data', 'OCH', 'train_test_val', 'train_set')
+    dataset_path = os.path.join(os.path.dirname(__file__), 'data', 'OCH', 'train_test_val')
 
-    # print(dataset_path)
-    # print(os.path.dirname(__file__))
     style_images_path = os.path.join(os.path.dirname(__file__), 'data', 'style-images')
     model_binaries_path = os.path.join(os.path.dirname(__file__), 'models', 'binaries')
     checkpoints_root_path = os.path.join(os.path.dirname(__file__), 'models', 'checkpoints')
-    image_size = 256  # training images from MS COCO are resized to image_size x image_size
-    batch_size = 8
+    image_size = 256  # training images from OCHuman are resized to image_size x image_size
+    batch_size = 5
 
-    assert os.path.exists(dataset_path), f'MS COCO missing. Download the dataset using resource_downloader.py script.'
+    assert os.path.exists(dataset_path), f'OCHuman dataset missing. Please download the OCHuman dataset.'
     os.makedirs(model_binaries_path, exist_ok=True)
 
     #
@@ -168,17 +164,17 @@ if __name__ == "__main__":
     #
     parser = argparse.ArgumentParser()
     # training related
-    parser.add_argument("--style_img_name", type=str, help="style image name that will be used for training", default='mosaic.jpg')
+    parser.add_argument("--style_img_name", type=str, help="style image name that will be used for training", default='beihong_xu_horse.jpg')
     parser.add_argument("--content_weight", type=float, help="weight factor for content loss", default=1e0)  # you don't need to change this one just play with style loss
     parser.add_argument("--style_weight", type=float, help="weight factor for style loss", default=4e5)
     parser.add_argument("--tv_weight", type=float, help="weight factor for total variation loss", default=0)
-    parser.add_argument("--num_of_epochs", type=int, help="number of training epochs ", default=200)
-    parser.add_argument("--subset_size", type=int, help="number of MS COCO images (NOT BATCHES) to use, default is all (~83k)(specified by None)", default=None)
+    parser.add_argument("--num_of_epochs", type=int, help="number of training epochs ", default=100)
+    parser.add_argument("--subset_size", type=int, help="number of OCHuman (NOT BATCHES) to use, default is all (~5k)(specified by None)", default=None)
     # logging/debugging/checkpoint related (helps a lot with experimentation)
-    parser.add_argument("--enable_tensorboard", type=bool, help="enable tensorboard logging (scalars + images)", default=False)
+    parser.add_argument("--enable_tensorboard", type=bool, help="enable tensorboard logging (scalars + images)", default=True)
     parser.add_argument("--image_log_freq", type=int, help="tensorboard image logging (batch) frequency - enable_tensorboard must be True to use", default=100)
-    parser.add_argument("--console_log_freq", type=int, help="logging to output console (batch) frequency", default=472)
-    parser.add_argument("--checkpoint_freq", type=int, help="checkpoint model saving (batch) frequency", default=472)
+    parser.add_argument("--console_log_freq", type=int, help="logging to output console (batch) frequency", default=100)
+    parser.add_argument("--checkpoint_freq", type=int, help="checkpoint model saving (batch) frequency", default=100)
     args = parser.parse_args()
 
     checkpoints_path = os.path.join(checkpoints_root_path, args.style_img_name.split('.')[0])
@@ -203,4 +199,3 @@ if __name__ == "__main__":
 
 # with open('filename.pickle', 'rb') as handle:
 #     b = pickle.load(handle)
-
